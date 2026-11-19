@@ -29,6 +29,13 @@ const stopFields = {
   travelNotes: optionalText(1200)
 };
 
+const storedStop = z.object({
+  ...stopFields, id, category: stopFields.category.unwrap(), arrivalMode: mode
+});
+const storedDay = z.object({ ...dayFields, id, stops: z.array(storedStop) });
+const storedTrip = z.object({ ...tripFields, id, days: z.array(storedDay) });
+export const plannerFile = z.object({ revision: z.number().int().nonnegative(), trips: z.array(storedTrip) });
+
 export const actions = {
   create_trip: z.object(tripFields),
   update_trip: z.object({ tripId: id, ...z.object(tripFields).partial().shape }),

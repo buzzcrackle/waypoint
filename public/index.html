@@ -23,6 +23,7 @@
       <button class="button subtle" data-action="new-trip"><span data-icon="plus"></span><span>New trip</span></button>
     </div>
     <button class="button codex-button" data-action="codex"><span data-icon="terminal"></span><span>Plan with Codex</span></button>
+    <button class="button sync-alert" id="sync-alert" aria-haspopup="dialog" hidden>Trip sync issues</button>
   </header>
   <main class="workspace">
     <section class="itinerary" aria-label="Trip planner" id="itinerary">
@@ -43,6 +44,15 @@
     </section>
   </main>
   <dialog id="editor" aria-labelledby="editor-title"></dialog>
+  <dialog id="sync-dialog" aria-labelledby="sync-title">
+    <div class="dialog-heading"><h2 id="sync-title">Trip sync issues</h2></div>
+    <div class="dialog-copy" id="sync-details"></div>
+    <p class="form-error" id="sync-retry-status" role="status"></p>
+    <form class="dialog-actions" method="dialog">
+      <button class="button secondary" value="close">Close</button>
+      <button class="button primary" type="button" id="sync-retry">Pull again</button>
+    </form>
+  </dialog>
   <div id="toast" role="status" aria-live="polite" hidden></div>
   <noscript>Enable JavaScript to use Waypoint.</noscript>
 </body>

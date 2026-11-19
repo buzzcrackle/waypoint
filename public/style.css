@@ -59,6 +59,8 @@ a { color: var(--brand-dark); }
 .trip-nav select { max-width: 210px; font-size: .875rem; font-weight: 650; }
 .codex-button { margin-left: auto; background: #f0ebfd; color: var(--brand-dark); border-color: #e7ddfb; }
 .codex-button:hover:not(:disabled) { background: #e8defb; }
+.sync-alert { background: #fff4e4; color: #773e13; border-color: #f0d3aa; }
+.sync-alert:hover:not(:disabled) { background: #fbe9d0; }
 .workspace { display: grid; grid-template-columns: minmax(385px, 36%) minmax(0, 1fr); height: calc(100dvh - 68px); }
 .itinerary { border-right: 1px solid var(--line); min-width: 0; overflow: auto; padding: 24px 24px 32px; scrollbar-width: thin; }
 .trip-cover {
@@ -144,8 +146,8 @@ a { color: var(--brand-dark); }
 .map-caption { margin: 9px 0 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .8125rem; color: var(--muted); }
 .map-caption .icon { width: 14px; height: 14px; margin-right: 4px; }
 .map-caption a { white-space: nowrap; color: var(--muted); }
-#editor { border: 1px solid var(--line); border-radius: 16px; width: min(520px, calc(100% - 24px)); max-height: calc(100dvh - 28px); padding: 20px; color: var(--ink); box-shadow: 0 14px 45px #22173736; }
-#editor::backdrop { background: #2013347c; }
+:is(#editor, #sync-dialog) { border: 1px solid var(--line); border-radius: 16px; width: min(520px, calc(100% - 24px)); max-height: calc(100dvh - 28px); padding: 20px; color: var(--ink); box-shadow: 0 14px 45px #22173736; }
+:is(#editor, #sync-dialog)::backdrop { background: #2013347c; }
 .dialog-heading, .dialog-actions { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
 .dialog-heading { margin-bottom: 12px; }
 .dialog-heading h2 { margin: 0; letter-spacing: -.035em; }
@@ -166,6 +168,9 @@ a { color: var(--brand-dark); }
 .form-error { color: #aa2748; margin: 9px 0 0; font-size: .875rem; }
 .dialog-copy { color: var(--muted); line-height: 1.55; }
 .dialog-copy pre { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--soft); padding: 12px; color: var(--ink); border-radius: 8px; }
+#sync-details { overflow-wrap: anywhere; }
+#sync-details p { margin: 4px 0 8px; }
+.sync-issue + .sync-issue { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
 #toast { position: fixed; z-index: 1000; bottom: 22px; left: 50%; transform: translateX(-50%); max-width: calc(100vw - 32px); background: #28213a; color: white; border-radius: 10px; padding: 10px 15px; box-shadow: 0 3px 12px #20133340; font-size: .875rem; }
 @media (max-width: 950px) {
   .workspace { grid-template-columns: minmax(340px, 42%) minmax(0, 1fr); }

@@ -21,6 +21,21 @@ Add a day and search for a place, pick it on the map, or enter coordinates. Use 
 
 The **Routes** view includes consecutive stops and transfers across days. Each leg has a travel mode and optional notes. Calculate walking, cycling, and driving estimates and display the route on the map. For transit and ferries, open Google Maps to look for directions. Use travel notes for reservations and schedule details. Flight legs support notes and straight-line visualization. Calculated paths are kept for the open browser tab.
 
+## Trip repositories
+
+Clone each trip repository directly into `trip-repos/`. Each checkout needs a `trips.json` in the root, a configured upstream branch, and Git credentials that work from the terminal. Use the same JSON format as `data/trips.json`.
+
+```sh
+git clone git@github.com:YOUR_ACCOUNT/YOUR_TRIP_REPO.git trip-repos/YOUR_TRIP_REPO
+npm start
+```
+
+Waypoint pulls at startup and once a minute while the server runs. Repo trips appear in the trip picker alongside local trips. If a local trip and a repository trip share an ID, Waypoint opens the repository copy. Edits to that trip save to its checkout. New trips save to `data/trips.json`. Commit and push from a trip checkout to share its changes.
+
+The browser shows a popup when Git finds a conflict or when local edits block an incoming change. For a conflict, the affected checkout uses its last readable trip data and pauses edits while you resolve the listed files and finish the merge in Git. For a blocked pull, commit or reconcile the local edits. Choose **Trip sync issues** then **Pull again** to retry from the browser.
+
+The Waypoint repository ignores the contents of `trip-repos/`. Git defaults to the executable on your `PATH`. Set `WAYPOINT_GIT` to use a specific executable, or set `WAYPOINT_TRIP_REPOS_DIR` to use a different directory. Demo mode and `WAYPOINT_DATA_FILE` open separate planners, with repository sync available when `WAYPOINT_TRIP_REPOS_DIR` is set explicitly.
+
 ## Plan with Codex
 
 Install Codex and register Waypoint's local MCP server. On macOS or Linux, run this command from the cloned folder.

@@ -2,6 +2,9 @@ const $ = (selector, element = document) => element.querySelector(selector);
 const header = $("#trip-header");
 const body = $("#itinerary-body");
 const editor = $("#editor");
+const syncDialog = $("#sync-dialog");
+const syncAlert = $("#sync-alert");
+const syncRetry = $("#sync-retry");
 const overlay = $("#map-overlay");
 const itinerary = $("#itinerary");
 const palette = [
@@ -55,6 +58,7 @@ let picking = false;
 let placeResults = [];
 let toastTimer;
 let pendingMutation = false;
+let acknowledgedSyncIssues = new Set();
 const routeResults = new Map();
 const markers = new Map();
 const map = L.map("map", { zoomControl: false, maxZoom: 19 }).setView([20, 0], 2);
@@ -121,14 +125,10 @@ function toast(message) {
 }
 
 async function refresh({ fit = false, silent = false } = {}) {
+  const before = state;
   try {
     const next = await api("/api/trips");
-    if (next.revision > state.revision) {
-      const previousPoints = mapPointsKey();
-      state = next;
-      syncTripSelection();
-      if (!editor.open && !picking) render(fit || mapPointsKey() !== previousPoints);
-    }
+    if (state === before) receiveState(next, fit);
   } catch {
     if (!silent) {
       if (state.revision < 0) body.innerHTML = '<p class="empty">Waypoint could not load. Check that the local server is running, then reload.</p>';
@@ -136,6 +136,55 @@ async function refresh({ fit = false, silent = false } = {}) {
     }
   }
 }
+
+function receiveState(next, fit = false) {
+  if (next.revision !== state.revision) {
+    const previousPoints = mapPointsKey();
+    state = next;
+    syncTripSelection();
+    if (!editor.open && !picking) render(fit || mapPointsKey() !== previousPoints);
+  }
+  showSyncIssues(next.syncIssues || []);
+}
+
+function showSyncIssues(issues) {
+  syncAlert.hidden = !issues.length;
+  const conflicts = issues.filter(issue => issue.type === "conflict" || issue.type === "blocked");
+  const keys = conflicts.map(issue => JSON.stringify([issue.repository, issue.type, issue.files]));
+  acknowledgedSyncIssues = new Set(keys.filter(key => acknowledgedSyncIssues.has(key)));
+  if (!issues.length) {
+    if (syncDialog.open) syncDialog.close();
+    return;
+  }
+  $("#sync-title").textContent = conflicts.some(issue => issue.type === "conflict") ? "Trip repository conflict"
+    : conflicts.length ? "Trip pull blocked" : "Trip sync issues";
+  $("#sync-details").innerHTML = issues.map(issue => `<section class="sync-issue">
+    <strong>${escape(issue.repository)}</strong>
+    <p>${escape(issue.message)}</p>
+    ${issue.files?.length ? `<ul>${issue.files.map(file => `<li><code>${escape(file)}</code></li>`).join("")}</ul>` : ""}
+  </section>`).join("");
+  if (!syncDialog.open && !editor.open && !picking && keys.some(key => !acknowledgedSyncIssues.has(key))) {
+    syncDialog.showModal();
+  }
+  if (syncDialog.open) acknowledgedSyncIssues = new Set(keys);
+}
+
+syncAlert.addEventListener("click", () => syncDialog.showModal());
+syncRetry.addEventListener("click", async () => {
+  syncRetry.disabled = true;
+  syncRetry.textContent = "Pulling…";
+  $("#sync-retry-status").textContent = "";
+  try {
+    const next = await api("/api/sync", {});
+    receiveState(next);
+    if (!next.syncIssues?.length) toast("Trip repositories are up to date.");
+  } catch (error) {
+    $("#sync-retry-status").textContent = error.message;
+  } finally {
+    syncRetry.disabled = false;
+    syncRetry.textContent = "Pull again";
+  }
+});
 
 function syncTripSelection() {
   if (!trip()) {

@@ -1,35 +1,23 @@
 import { createServer } from "node:http";
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
-import { applyAction, coordinates, PlannerError, roadMode } from "./model.mjs";
+import { coordinates, PlannerError, roadMode } from "./model.mjs";
 import { sample } from "./sample.mjs";
+import { createTripStore } from "./trip-store.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 const demo = process.argv.includes("--demo");
-const database = resolve(process.env.WAYPOINT_DATA_FILE || resolve(root, "data", demo ? "demo-trips.json" : "trips.json"));
+const dataFile = process.env.WAYPOINT_DATA_FILE;
+const database = resolve(dataFile || resolve(root, "data", demo ? "demo-trips.json" : "trips.json"));
+const repositoryDirectory = process.env.WAYPOINT_TRIP_REPOS_DIR
+  ? resolve(process.env.WAYPOINT_TRIP_REPOS_DIR)
+  : (!demo && !dataFile ? resolve(root, "trip-repos") : null);
+const trips = createTripStore({ database, initialState: demo ? sample : { revision: 0, trips: [] }, repositoryDirectory });
 const port = Number(process.env.WAYPOINT_PORT || 4173);
 const origin = `http://127.0.0.1:${port}`;
 const allowedHosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
-
-function save(state) {
-  mkdirSync(dirname(database), { recursive: true });
-  const temp = `${database}.${process.pid}.tmp`;
-  writeFileSync(temp, JSON.stringify(state, null, 2) + "\n", { mode: 0o600 });
-  renameSync(temp, database);
-}
-
-function load() {
-  try {
-    return JSON.parse(readFileSync(database, "utf8"));
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-    const state = demo ? structuredClone(sample) : { revision: 0, trips: [] };
-    save(state);
-    return state;
-  }
-}
 
 const assets = {
   "/": ["public/index.html", "text/html; charset=utf-8"],
@@ -153,7 +141,7 @@ createServer(async (request, response) => {
     }
     const url = new URL(request.url, origin);
     if (request.method === "GET") {
-      if (url.pathname === "/api/trips") return json(response, load());
+      if (url.pathname === "/api/trips") return json(response, trips.read());
       if (url.pathname === "/api/places") {
         const query = url.searchParams.get("q")?.trim();
         if (!query || query.length < 2 || query.length > 180) throw new PlannerError("Enter a place or address (2–180 characters).");
@@ -167,18 +155,15 @@ createServer(async (request, response) => {
     }
     if (request.method === "POST") {
       if (url.pathname === "/api/route") return json(response, await getRoute(await readBody(request)));
+      if (url.pathname === "/api/sync") {
+        await trips.sync();
+        return json(response, trips.read());
+      }
       if (url.pathname === "/api/actions") {
         const parsed = mutationInput.safeParse(await readBody(request));
         if (!parsed.success) throw new PlannerError("Invalid itinerary action.");
         const { action, values, revision } = parsed.data;
-        const state = load();
-        if (revision !== undefined && revision !== state.revision) {
-          throw new PlannerError("The itinerary changed. Reload the latest version and try again.", 409);
-        }
-        const tripId = applyAction(state, action, values);
-        state.revision += 1;
-        save(state);
-        return json(response, { state, tripId });
+        return json(response, trips.change(action, values, revision));
       }
     }
     throw new PlannerError("Page not found.", 404);
@@ -188,4 +173,11 @@ createServer(async (request, response) => {
     console.error(error);
     return json(response, { error: "Waypoint could not complete this request." }, 500);
   }
-}).listen(port, "127.0.0.1", () => console.log(`Waypoint is ready at ${origin}`));
+}).listen(port, "127.0.0.1", () => {
+  if (repositoryDirectory) {
+    const pull = () => trips.sync().catch(error => console.error("Could not sync trip repositories", error));
+    pull();
+    setInterval(pull, 60_000).unref();
+  }
+  console.log(`Waypoint is ready at ${origin}`);
+});
