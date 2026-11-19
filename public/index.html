@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A personal trip planner for turning an itinerary into a map.">
+  <meta name="theme-color" content="#faf9fe">
+  <title>Waypoint · Trip planner</title>
+  <link rel="stylesheet" href="/leaflet.css">
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="/leaflet.js"></script>
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Waypoint home">
+      <span class="brand-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m15.7 8.3-2.2 5.2-5.2 2.2 2.2-5.2z"></path></svg></span>
+      Waypoint<span>.</span>
+    </a>
+    <div class="trip-nav">
+      <label class="sr-only" for="trip-select">Current trip</label>
+      <div class="select-wrap"><select id="trip-select"></select></div>
+      <button class="button subtle" data-action="new-trip"><span data-icon="plus"></span><span>New trip</span></button>
+    </div>
+    <button class="button codex-button" data-action="codex"><span data-icon="terminal"></span><span>Plan with Codex</span></button>
+  </header>
+  <main class="workspace">
+    <section class="itinerary" aria-label="Trip planner" id="itinerary">
+      <div id="trip-header"></div>
+      <div id="itinerary-body"><p class="loading">Loading your trips…</p></div>
+    </section>
+    <section class="map-panel" aria-label="Map">
+      <div class="map-heading">
+        <div><h2>Trip map</h2><p id="map-description">See where your trip takes you.</p></div>
+        <button class="button secondary" data-action="fit"><span data-icon="focus"></span>Fit map</button>
+      </div>
+      <div class="map-frame">
+        <div id="map" aria-label="Interactive map of trip stops"></div>
+        <div class="map-overlay" id="map-overlay" hidden></div>
+        <div class="map-legend" id="map-legend" hidden></div>
+      </div>
+      <div class="map-caption"><span><span data-icon="route"></span>Dashed lines show stop order. Solid lines show calculated routes.</span><a href="https://www.openstreetmap.org/fixthemap" target="_blank" rel="noopener noreferrer">Fix the map</a></div>
+    </section>
+  </main>
+  <dialog id="editor" aria-labelledby="editor-title"></dialog>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+  <noscript>Enable JavaScript to use Waypoint.</noscript>
+</body>
+</html>
