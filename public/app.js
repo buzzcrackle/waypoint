@@ -58,6 +58,7 @@ let picking = false;
 let placeResults = [];
 let toastTimer;
 let pendingMutation = false;
+let publishingTrip = "";
 let acknowledgedSyncIssues = new Set();
 const routeResults = new Map();
 const markers = new Map();
@@ -220,11 +221,33 @@ function renderHeader() {
   header.innerHTML = `<div class="trip-cover ${photo ? "kyoto" : ""}">
     <div class="cover-actions">
       ${current.destination ? `<span class="cover-location">${icon("pin")}${escape(current.destination)}</span>` : "<span></span>"}
-      <button class="button icon-button on-cover" data-action="edit-trip" title="Edit trip" aria-label="Edit trip">${icon("pencil")}</button>
+      <div class="cover-buttons">
+        ${state.repositoryTripIds?.includes(current.id) ? `<button class="button on-cover" data-action="publish-trip" ${publishingTrip ? "disabled" : ""}>
+          ${publishingTrip === current.id ? "Saving…" : "Save to GitHub"}
+        </button>` : ""}
+        <button class="button icon-button on-cover" data-action="edit-trip" title="Edit trip" aria-label="Edit trip">${icon("pencil")}</button>
+      </div>
     </div>
     <div><h1>${escape(current.name)}</h1><p>${escape(dates)}${current.days.length ? ` · ${count(current.days.length, "day")}` : ""}</p></div>
     ${photo ? '<a class="photo-credit" href="https://commons.wikimedia.org/wiki/File:Kyoto_(16042885718).jpg" target="_blank" rel="noopener noreferrer" title="Moyan Brenn, CC BY 2.0. Cropped and darkened.">Photo credit</a>' : ""}
   </div>`;
+}
+
+async function saveTripToGitHub() {
+  const current = trip();
+  if (publishingTrip || !current) return;
+  publishingTrip = current.id;
+  renderHeader();
+  try {
+    const { pushed } = await api("/api/publish-trip", { tripId: current.id, revision: state.revision });
+    toast(pushed ? `${current.name} saved to GitHub.` : `${current.name} is already up to date.`);
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    publishingTrip = "";
+    await refresh({ silent: true });
+    renderHeader();
+  }
 }
 
 function renderBody() {
@@ -737,6 +760,7 @@ document.addEventListener("click", async event => {
   const day = trip()?.days.find(value => value.id === dayId);
   if (action === "new-trip") editTrip();
   else if (action === "edit-trip") editTrip(trip());
+  else if (action === "publish-trip") saveTripToGitHub();
   else if (action === "new-day") editDay();
   else if (action === "edit-day") editDay(day);
   else if (action === "new-stop") editStop(day);

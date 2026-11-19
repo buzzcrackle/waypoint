@@ -30,7 +30,9 @@ git clone git@github.com:YOUR_ACCOUNT/YOUR_TRIP_REPO.git trip-repos/YOUR_TRIP_RE
 npm start
 ```
 
-Waypoint pulls at startup and once a minute while the server runs. Repo trips appear in the trip picker alongside local trips. If a local trip and a repository trip share an ID, Waypoint opens the repository copy. Edits to that trip save to its checkout. New trips save to `data/trips.json`. Commit and push from a trip checkout to share its changes.
+You can also symlink an existing checkout into `trip-repos/`. Waypoint pulls at startup and once a minute while the server runs. Repo trips appear in the trip picker alongside local trips. If a local trip and a repository trip share an ID, Waypoint opens the repository copy. Edits to that trip save to its checkout. New trips save to `data/trips.json`.
+
+Select a repository trip and click **Save to GitHub** to commit and push that one itinerary to the checkout's upstream branch. Edits to other trips in the same `trips.json` and changes to other files stay local. If a push fails, you can retry the saved trip. If the branch has unrelated unpublished commits or staged edits to `trips.json`, review them in Git first.
 
 The browser shows a popup when Git finds a conflict or when local edits block an incoming change. For a conflict, the affected checkout uses its last readable trip data and pauses edits while you resolve the listed files and finish the merge in Git. For a blocked pull, commit or reconcile the local edits. Choose **Trip sync issues** then **Pull again** to retry from the browser.
 

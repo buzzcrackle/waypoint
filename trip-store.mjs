@@ -1,7 +1,8 @@
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { applyAction, plannerFile, PlannerError } from "./model.mjs";
 import { committedTrips, pullRepository } from "./git-sync.mjs";
+import { publishTrip } from "./git-publish.mjs";
 
 function save(file, state) {
   mkdirSync(dirname(file), { recursive: true });
@@ -30,7 +31,7 @@ function cacheRepository(repository, text) {
 }
 
 function readRepository(repository) {
-  if (repository.syncing || repository.issue?.type === "conflict") return;
+  if (repository.syncing || repository.publishing || repository.issue?.type === "conflict") return;
   try {
     if (!lstatSync(repository.file).isFile()) throw new Error("Expected a regular file");
     cacheRepository(repository, readFileSync(repository.file, "utf8"));
@@ -61,14 +62,18 @@ export function createTripStore({ database, initialState, repositoryDirectory })
     try {
       mkdirSync(repositoryDirectory, { recursive: true });
       const next = new Map();
+      const paths = new Set();
       const entries = readdirSync(repositoryDirectory, { withFileTypes: true });
       for (const entry of entries.sort((first, second) => first.name.localeCompare(second.name))) {
-        const directory = join(repositoryDirectory, entry.name);
-        if (entry.isDirectory() && existsSync(join(directory, ".git"))) {
-          next.set(entry.name, repositories.get(entry.name) || {
-            name: entry.name, directory, file: join(directory, "trips.json")
-          });
-        }
+        const path = join(repositoryDirectory, entry.name);
+        if (!(entry.isDirectory() || entry.isSymbolicLink()) || !existsSync(join(path, ".git"))) continue;
+        const directory = realpathSync(path);
+        if (paths.has(directory)) continue;
+        paths.add(directory);
+        const known = repositories.get(entry.name);
+        next.set(entry.name, known?.directory === directory ? known : {
+          name: entry.name, directory, file: join(directory, "trips.json")
+        });
       }
       repositories = next;
       directoryIssue = null;
@@ -100,19 +105,28 @@ export function createTripStore({ database, initialState, repositoryDirectory })
       previousTrips = signature;
       revision = Math.max(revision + 1, Date.now());
     }
-    return { state: { revision, trips: list, syncIssues: issues }, owners };
+    return { state: { revision, trips: list, syncIssues: issues, repositoryTripIds: [...owners.keys()] }, owners };
+  }
+
+  function checkRevision(state, expectedRevision) {
+    if (expectedRevision !== undefined && expectedRevision !== state.revision) {
+      throw new PlannerError("The itinerary changed. Reload the latest version and try again.", 409);
+    }
+  }
+
+  function checkRepository(source) {
+    if (source.syncing) throw new PlannerError("Waypoint is pulling updates for this trip. Try again shortly.", 409);
+    if (source.publishing) throw new PlannerError("Waypoint is saving a trip from this repository to GitHub. Try again shortly.", 409);
+    if (source.issue?.type === "conflict" || source.fileIssue) {
+      throw new PlannerError("Resolve this trip repository’s sync issue before making changes.", 409);
+    }
   }
 
   function change(action, values, expectedRevision) {
     const { state, owners } = snapshot();
-    if (expectedRevision !== undefined && expectedRevision !== state.revision) {
-      throw new PlannerError("The itinerary changed. Reload the latest version and try again.", 409);
-    }
+    checkRevision(state, expectedRevision);
     const source = action === "create_trip" ? local : owners.get(values?.tripId) || local;
-    if (source.syncing) throw new PlannerError("Waypoint is pulling updates for this trip. Try again shortly.", 409);
-    if (source.issue?.type === "conflict" || source.fileIssue) {
-      throw new PlannerError("Resolve this trip repository’s sync issue before editing it.", 409);
-    }
+    checkRepository(source);
     const stored = source === local
       ? (repositoryDirectory ? readLocal(database, initialState) : state)
       : structuredClone(source.data);
@@ -122,11 +136,29 @@ export function createTripStore({ database, initialState, repositoryDirectory })
     return { state: snapshot().state, tripId };
   }
 
+  async function publish(tripId, expectedRevision) {
+    const { state, owners } = snapshot();
+    checkRevision(state, expectedRevision);
+    const repository = owners.get(tripId);
+    if (!repository) throw new PlannerError("Select a trip from a linked repository to save it to GitHub.", 404);
+    checkRepository(repository);
+    const trip = state.trips.find(item => item.id === tripId);
+    repository.publishing = true;
+    try {
+      const result = await publishTrip(repository.directory, trip);
+      repository.issue = null;
+      return result;
+    } finally {
+      repository.publishing = false;
+    }
+  }
+
   function sync() {
     if (!repositoryDirectory) return Promise.resolve();
     if (activePull) return activePull;
     discover();
     activePull = Promise.all([...repositories.values()].map(async repository => {
+      if (repository.publishing) return;
       readRepository(repository);
       repository.syncing = true;
       try {
@@ -149,5 +181,5 @@ export function createTripStore({ database, initialState, repositoryDirectory })
     return activePull;
   }
 
-  return { read: () => snapshot().state, change, sync };
+  return { read: () => snapshot().state, change, publish, sync };
 }

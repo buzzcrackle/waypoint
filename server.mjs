@@ -82,6 +82,7 @@ const geocode = externalService();
 const route = externalService();
 const routeInput = z.object({ from: coordinates, to: coordinates, mode: roadMode });
 const mutationInput = z.object({ action: z.string(), values: z.unknown(), revision: z.number().int().optional() });
+const publishInput = z.object({ tripId: z.string().min(1).max(100), revision: z.number().int().nonnegative() });
 const profiles = { walking: "foot", cycling: "bike", driving: "car" };
 
 async function searchPlaces(query) {
@@ -158,6 +159,12 @@ createServer(async (request, response) => {
       if (url.pathname === "/api/sync") {
         await trips.sync();
         return json(response, trips.read());
+      }
+      if (url.pathname === "/api/publish-trip") {
+        const parsed = publishInput.safeParse(await readBody(request));
+        if (!parsed.success) throw new PlannerError("Select a trip and try saving again.");
+        const { tripId, revision } = parsed.data;
+        return json(response, await trips.publish(tripId, revision));
       }
       if (url.pathname === "/api/actions") {
         const parsed = mutationInput.safeParse(await readBody(request));

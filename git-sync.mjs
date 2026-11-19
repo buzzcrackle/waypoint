@@ -4,10 +4,11 @@ import { promisify } from "node:util";
 const exec = promisify(execFile);
 const git = process.env.WAYPOINT_GIT || "git";
 
-async function run(directory, ...args) {
+export async function runGit(directory, args, env) {
   const { stdout } = await exec(git, args, {
     cwd: directory,
-    env: { ...process.env, GIT_TERMINAL_PROMPT: "0", LC_ALL: "C" },
+    env: { ...process.env, ...env, GIT_TERMINAL_PROMPT: "0", LC_ALL: "C" },
+    maxBuffer: 16 * 1024 * 1024,
     timeout: 30000,
     windowsHide: true
   });
@@ -15,7 +16,7 @@ async function run(directory, ...args) {
 }
 
 async function conflicts(directory) {
-  const paths = await run(directory, "diff", "--name-only", "--diff-filter=U", "-z");
+  const paths = await runGit(directory, ["diff", "--name-only", "--diff-filter=U", "-z"]);
   return paths.split("\0").filter(Boolean);
 }
 
@@ -28,14 +29,14 @@ function conflict(files) {
 }
 
 export function committedTrips(directory) {
-  return run(directory, "show", "HEAD:trips.json");
+  return runGit(directory, ["show", "HEAD:trips.json"]);
 }
 
 export async function pullRepository(directory) {
   try {
     const files = await conflicts(directory);
     if (files.length) return conflict(files);
-    await run(directory, "pull", "--no-rebase", "--ff", "--no-autostash", "--no-edit", "--no-recurse-submodules");
+    await runGit(directory, ["pull", "--no-rebase", "--ff", "--no-autostash", "--no-edit", "--no-recurse-submodules"]);
     return null;
   } catch (error) {
     const output = `${error.stdout || ""}\n${error.stderr || ""}`;
