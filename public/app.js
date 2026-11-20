@@ -538,7 +538,9 @@ function openEditor(title, fields, action, ids, options = {}) {
 function editTrip(current) {
   openEditor(current ? "Edit trip" : "New trip",
     field("Trip name", "name", current?.name, 'required maxlength="120" placeholder="e.g. Spring in Japan" autofocus') +
-    field("Destination", "destination", current?.destination, 'maxlength="180" placeholder="e.g. Tokyo and Kyoto"'),
+    field("Destination", "destination", current?.destination, 'maxlength="180" placeholder="e.g. Tokyo and Kyoto"') +
+    textarea("Trip restrictions", "restrictions", current?.restrictions) +
+    textarea("Trip notes", "notes", current?.notes),
     current ? "update_trip" : "create_trip", current ? { tripId } : {},
     current ? { remove: { action: "delete_trip", message: `Delete “${current.name}” and all of its days and stops?` } } : { submit: "Create trip" });
 }

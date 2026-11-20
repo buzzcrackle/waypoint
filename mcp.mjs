@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -5,7 +6,7 @@ import { actions, roadMode } from "./model.mjs";
 import { getTrip, request, runAction } from "./local-api.mjs";
 
 const server = new McpServer({ name: "waypoint", version: "1.0.0" }, {
-  instructions: "Waypoint is a personal trip planner. Read the user's trip before editing. Stops appear in visit order. Each stop's arrivalMode and travelNotes describe the leg from the previous stop, including across dates. Use exact map coordinates from place search or a verified source."
+  instructions: await readFile(new URL("./AGENTS.md", import.meta.url), "utf8")
 });
 
 function register(name, description, inputSchema, handler, annotations = {}) {
@@ -24,7 +25,7 @@ register("list_trips", "List trips with IDs, destinations, day counts, and the c
   return { revision, trips: trips.map(({ id, name, destination, days }) => ({ id, name, destination, days: days.length })) };
 }, readOnly);
 
-register("get_trip", "Read a trip, its ordered days and stops, and the current revision.", { tripId: z.string() },
+register("get_trip", "Read a trip's restrictions, notes, ordered days and stops, and the current revision.", { tripId: z.string() },
   ({ tripId }) => getTrip(tripId), readOnly);
 
 register("search_places", "Look up a specific place or address and return names and coordinates. Include the city to disambiguate.", {
@@ -45,8 +46,8 @@ register("estimate_leg", "Get a walking, cycling, or driving distance and durati
 }, { ...readOnly, openWorldHint: true });
 
 const descriptions = {
-  create_trip: "Create a trip with a name and optional destination.",
-  update_trip: "Set the trip name and destination.",
+  create_trip: "Create a trip with a name and optional destination, restrictions, and notes.",
+  update_trip: "Edit the trip name, destination, restrictions, or notes.",
   delete_trip: "Delete the trip and all of its days and stops.",
   add_day: "Add a date and optional title. Days are kept in calendar order.",
   update_day: "Set the day date and title.",

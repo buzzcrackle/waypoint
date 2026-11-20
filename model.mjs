@@ -16,7 +16,12 @@ export const coordinates = z.object({
 });
 export const roadMode = z.enum(["walking", "cycling", "driving"]);
 const mode = z.enum(["walking", "cycling", "driving", "transit", "flight", "ferry"]);
-const tripFields = { name: label, destination: optionalText(180) };
+const tripFields = {
+  name: label,
+  destination: optionalText(180),
+  restrictions: optionalText(2000).describe("Trip-wide constraints such as fixed bookings, accessibility needs, or limits on travel modes."),
+  notes: optionalText(2000).describe("Trip-wide planning context such as interests, preferences, or booking reminders.")
+};
 const dayFields = { date, title: optionalText(120) };
 const stopFields = {
   ...coordinates.shape,

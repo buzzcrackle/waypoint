@@ -19,6 +19,8 @@ To try the Kyoto itinerary, stop the server and run `npm run demo`. Demo edits l
 
 Add a day and search for a place, pick it on the map, or enter coordinates. Use a stop’s edit dialog to move it to another day or move it earlier or later. Select a day to filter the itinerary and map.
 
+Use **Edit trip** to enter **Trip restrictions** such as fixed bookings or travel limits, and **Trip notes** such as preferences or reminders. Both are optional and stored on the trip in `trips.json` as `restrictions` and `notes`. Codex can read them through Waypoint.
+
 The **Routes** view includes consecutive stops and transfers across days. Each leg has a travel mode and optional notes. Calculate walking, cycling, and driving estimates and display the route on the map. For transit and ferries, open Google Maps to look for directions. Use travel notes for reservations and schedule details. Flight legs support notes and straight-line visualization. Calculated paths are kept for the open browser tab.
 
 ## Trip repositories
